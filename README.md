@@ -28,8 +28,9 @@
 ## 快速开始
 
 ### 前置要求
-- Python 3.10+
-- conda（推荐）
+- Python 3.10+（本地运行）
+- conda（推荐，本地运行）
+- Docker 和 Docker Compose（Docker 运行）
 
 ### 方式一：本地运行
 
