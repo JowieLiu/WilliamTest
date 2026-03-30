@@ -14,7 +14,7 @@ question = st.text_input(
     placeholder="例如：Apple 2025 年的营收是多少？"
 )
 
-top_k = st.slider("检索相关文档数量", min_value=1, max_value=10, value=5)
+top_k = st.slider("检索相关文档数量", min_value=1, max_value=5, value=3)
 
 if st.button("获取回答"):
     if question:

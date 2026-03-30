@@ -14,7 +14,10 @@ class VectorStore:
         try:
             self.collection = self.client.get_collection(name=name)
         except:
-            self.collection = self.client.create_collection(name=name)
+            self.collection = self.client.create_collection(
+                name=name,
+                metadata={"hnsw:space": "cosine", "hnsw:M": 16, "hnsw:ef_construction": 100}
+            )
 
     def add_documents(self, chunks: List[DocumentChunk]):
         if not self.collection:
@@ -39,13 +42,14 @@ class VectorStore:
     def get_embedding(self, text: str):
         return self.embedding_model.encode(text).tolist()
 
-    def query(self, query_text: str, top_k: int = 5):
+    def query(self, query_text: str, top_k: int = 3):
         if not self.collection:
             self.create_collection()
 
         query_embedding = self.get_embedding(query_text)
         results = self.collection.query(
             query_embeddings=[query_embedding],
-            n_results=top_k
+            n_results=top_k,
+            include=["documents", "metadatas", "distances"]
         )
         return results

@@ -27,8 +27,8 @@ class DataProcessor:
         text = text.strip()
         return text
 
-    def split_into_chunks(self, text: str, chunk_size: int = 500,
-                          overlap: int = 100) -> List[str]:
+    def split_into_chunks(self, text: str, chunk_size: int = 350,
+                          overlap: int = 50) -> List[str]:
         words = text.split()
         chunks = []
         start = 0
