@@ -22,23 +22,45 @@ class QAGenerator:
     def generate_answer(self, query: str, context: str) -> str:
         prompt = self._build_prompt(query, context)
         
-        outputs = self.pipe(
-            prompt,
-            max_new_tokens=256,
-            temperature=0.7,
-            top_p=0.95,
-            do_sample=True,
-            return_full_text=False
-        )
+        try:
+            outputs = self.pipe(
+                prompt,
+                max_new_tokens=384,
+                temperature=0.3,
+                top_p=0.9,
+                top_k=40,
+                repetition_penalty=1.1,
+                do_sample=True,
+                return_full_text=False
+            )
+            
+            answer = outputs[0]['generated_text'].strip()
+            
+            if len(answer) < 10 or len(answer.split()) < 3:
+                return self._fallback_answer(context)
+            
+            return answer
+        except Exception as e:
+            print(f"Generation error: {e}")
+            return self._fallback_answer(context)
+
+    def _fallback_answer(self, context: str) -> str:
+        lines = context.split('\n')
+        relevant_parts = []
+        for line in lines[:5]:
+            if line.strip() and len(line.strip()) > 20:
+                relevant_parts.append(line.strip())
         
-        answer = outputs[0]['generated_text'].strip()
-        return answer
+        if relevant_parts:
+            return "根据检索到的财报信息：\n" + "\n".join(relevant_parts[:3])
+        return "根据检索到的财报信息，相关内容已在参考来源中展示。"
 
     def _build_prompt(self, query: str, context: str) -> str:
-        return f"""<|system|>
-You are a financial analyst. Answer the question based on the provided context. If you don't know the answer, just say you don't know.
-<|user|>
-Context: {context}
+        return f"""You are a helpful financial analyst. Use the following context to answer the question.
+
+Context:
+{context}
 
 Question: {query}
-<|assistant|>"""
+
+Answer:"""
