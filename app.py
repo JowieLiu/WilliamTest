@@ -119,62 +119,81 @@ if st.button("获取回答"):
         
         if use_streaming:
             # 流式输出模式
-            with st.spinner("正在思考..."):
-                try:
-                    answer_placeholder = st.empty()
-                    sources_placeholder = st.empty()
-                    
-                    response = requests.post(
-                        "http://localhost:8000/api/qa/stream",
-                        json={"question": question, "top_k": top_k},
-                        stream=True
-                    )
-                    
-                    current_answer = ""
-                    sources = []
-                    
-                    for line in response.iter_lines():
-                        if line:
-                            line = line.decode('utf-8')
-                            if line.startswith('data: '):
-                                data_str = line[6:]
-                                try:
-                                    data = json.loads(data_str)
+            status_placeholder = st.empty()
+            answer_placeholder = st.empty()
+            sources_placeholder = st.empty()
+            
+            try:
+                status_placeholder.info("🔍 正在查找相关文档...")
+                
+                response = requests.post(
+                    "http://localhost:8000/api/qa/stream",
+                    json={"question": question, "top_k": top_k},
+                    stream=True
+                )
+                
+                current_answer = ""
+                sources = []
+                answer_started = False
+                
+                for line in response.iter_lines():
+                    if line:
+                        line = line.decode('utf-8')
+                        if line.startswith('data: '):
+                            data_str = line[6:]
+                            try:
+                                data = json.loads(data_str)
+                                
+                                # 处理状态信息
+                                if 'status' in data:
+                                    if data['status'] == 'searching':
+                                        status_placeholder.info("🔍 正在查找相关文档...")
+                                    elif data['status'] == 'generating':
+                                        status_placeholder.info("✨ 正在生成答案...")
+                                
+                                # 处理来源信息
+                                if 'sources' in data:
+                                    sources = data['sources']
+                                    st.session_state.current_sources = sources
+                                
+                                # 处理答案
+                                if 'answer' in data:
+                                    if not answer_started:
+                                        answer_started = True
+                                        status_placeholder.empty()
                                     
-                                    if 'sources' in data:
-                                        sources = data['sources']
-                                        st.session_state.current_sources = sources
-                                    
-                                    if 'answer' in data:
-                                        current_answer = data['answer']
-                                        st.session_state.current_answer = current_answer
-                                        answer_placeholder.subheader("💡 回答：")
-                                        answer_placeholder.write(current_answer)
-                                    
-                                    if 'done' in data and data['done']:
-                                        break
-                                    
-                                    if 'error' in data:
-                                        st.error(f"错误: {data['error']}")
-                                        break
-                                except json.JSONDecodeError:
-                                    continue
-                    
-                    # 显示参考来源
-                    if sources:
-                        st.subheader("📚 参考来源：")
-                        for i, source in enumerate(sources, 1):
-                            chunk_type = "父块（章节摘要）" if source['metadata'].get('is_parent', False) else "子块（详细内容）"
-                            with st.expander(f"来源 {i} - {chunk_type} - {source['metadata'].get('year', 'N/A')} 年 {source['metadata'].get('section_title', 'N/A')}"):
-                                st.write(source["text"])
-                                if source.get('distance'):
-                                    st.caption(f"相似度距离: {source['distance']:.4f}")
-                    
-                except requests.exceptions.ConnectionError:
-                    st.error("无法连接到后端服务，请确保后端服务正在运行！")
-                    st.info("请先运行 `python main.py` 启动后端服务")
-                except Exception as e:
-                    st.error(f"发生错误: {str(e)}")
+                                    current_answer = data['answer']
+                                    st.session_state.current_answer = current_answer
+                                    answer_placeholder.subheader("💡 回答：")
+                                    answer_placeholder.write(current_answer)
+                                
+                                # 处理完成
+                                if 'done' in data and data['done']:
+                                    status_placeholder.empty()
+                                    break
+                                
+                                # 处理错误
+                                if 'error' in data:
+                                    status_placeholder.error(f"错误: {data['error']}")
+                                    break
+                            except json.JSONDecodeError:
+                                continue
+                
+                # 显示参考来源
+                if sources:
+                    st.subheader("📚 参考来源：")
+                    for i, source in enumerate(sources, 1):
+                        chunk_type = "父块（章节摘要）" if source['metadata'].get('is_parent', False) else "子块（详细内容）"
+                        with st.expander(f"来源 {i} - {chunk_type} - {source['metadata'].get('year', 'N/A')} 年 {source['metadata'].get('section_title', 'N/A')}"):
+                            st.write(source["text"])
+                            if source.get('distance'):
+                                st.caption(f"相似度距离: {source['distance']:.4f}")
+            
+            except requests.exceptions.ConnectionError:
+                status_placeholder.error("无法连接到后端服务，请确保后端服务正在运行！")
+                st.info("请先运行 `python main.py` 启动后端服务")
+            except Exception as e:
+                status_placeholder.error(f"发生错误: {str(e)}")
         else:
             # 普通模式
             with st.spinner("正在思考..."):

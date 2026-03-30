@@ -64,24 +64,29 @@ async def qa_endpoint(request: QueryRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.post("/api/qa/stream")
-async def qa_stream_endpoint(request: QueryRequest):
-    """流式输出接口"""
+def generate_stream(request: QueryRequest):
+    """生成流式响应的生成器"""
     global vector_store, retriever
     
     if not vector_store or not retriever:
-        raise HTTPException(status_code=500, detail="System not initialized")
+        yield f"data: {json.dumps({'error': 'System not initialized'}, ensure_ascii=False)}\n\n"
+        return
     
     try:
         from src.qa_generator import get_global_generator
         
+        # 立即发送开始处理的状态
+        yield f"data: {json.dumps({'status': 'searching'}, ensure_ascii=False)}\n\n"
+        
+        # 检索文档
         results = retriever.retrieve(request.question, request.top_k)
+        
+        # 发送已找到文档的状态和来源信息
+        sources_data = json.dumps({"status": "generating", "sources": results}, ensure_ascii=False)
+        yield f"data: {sources_data}\n\n"
+        
         context = retriever.format_context(results)
         generator = get_global_generator()
-        
-        # 先发送源信息
-        sources_data = json.dumps({"sources": results}, ensure_ascii=False)
-        yield f"data: {sources_data}\n\n"
         
         # 生成答案
         answer = generator.generate_answer(request.question, context)
@@ -101,6 +106,15 @@ async def qa_stream_endpoint(request: QueryRequest):
     except Exception as e:
         error_data = json.dumps({"error": str(e)}, ensure_ascii=False)
         yield f"data: {error_data}\n\n"
+
+
+@app.post("/api/qa/stream")
+async def qa_stream_endpoint(request: QueryRequest):
+    """流式输出接口"""
+    return StreamingResponse(
+        generate_stream(request),
+        media_type="text/event-stream"
+    )
 
 
 @app.post("/api/configure-llm")

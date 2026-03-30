@@ -10,6 +10,8 @@
 - 结果 Rerank 重排序
 - 灵活的模型配置（本地小模型 / API 大模型）
 - 简洁直观的 Web 界面
+- 流式输出（实时显示处理进度）
+- 用户反馈系统
 - 完整的测试套件
 
 ## 技术栈
@@ -129,7 +131,31 @@ python -m pytest tests/test_system.py --cov=src --cov-report=html
   - 结构化的上下文格式
 - **全局生成器管理**：支持运行时动态切换
 
-### 5. 测试套件
+### 5. 问答生成
+- **灵活的生成器架构**：策略模式 + 工厂模式
+- **多种生成器**：
+  - FallbackGenerator：直接展示检索结果
+  - TinyLlamaGenerator：本地小模型总结
+  - OpenAIApiGenerator：API 大模型调用
+- **提示词优化**：
+  - 明确的系统指令
+  - 要求基于上下文总结
+  - 结构化的上下文格式
+- **全局生成器管理**：支持运行时动态切换
+
+### 6. 流式输出
+- Server-Sent Events (SSE) 协议
+- 逐词模拟流式输出
+- 先发送参考来源，再发送答案
+- 支持完成信号和错误处理
+
+### 7. 用户反馈系统
+- 简单的反馈界面（👍/👎）
+- 可选的评论输入
+- 内存存储反馈数据（保留最近 1000 条）
+- 管理接口获取反馈统计
+
+### 8. 测试套件
 - 单元测试：覆盖所有核心模块
 - 集成测试：端到端完整流程测试
 - Mock 测试：API 调用使用 mock 避免网络请求
@@ -177,6 +203,39 @@ WilliamTest/
 13. Add hybrid retrieval and rerank - 添加混合检索和 Rerank
 14. Update prompts for better summarization - 优化提示词增强总结功能
 15. Add streaming output and feedback system - 添加流式输出和用户反馈系统
+16. Fix streaming output and improve status prompts - 修复流式输出并优化状态提示
+17. Add streaming and feedback test script - 添加流式输出和反馈系统测试脚本
+
+## 测试说明
+
+### 运行测试
+
+```bash
+# 运行所有测试
+python -m pytest tests/test_system.py -v
+
+# 运行流式输出和反馈系统测试
+python -m pytest tests/test_streaming_and_feedback.py -v
+
+# 运行测试并生成覆盖率报告
+pip install pytest-cov
+python -m pytest tests/test_system.py --cov=src --cov-report=html
+```
+
+### 测试覆盖范围
+
+- **tests/test_system.py**: 完整系统测试（14 个测试）
+  - 数据处理模块测试
+  - 向量存储模块测试
+  - 检索器模块测试
+  - QA 生成器测试
+  - 端到端集成测试
+
+- **tests/test_streaming_and_feedback.py**: 新增功能测试（12 个测试）
+  - 流式输出数据格式验证
+  - 状态提示验证
+  - 用户反馈数据结构验证
+  - SSE 协议格式验证
 
 ## 许可证
 
