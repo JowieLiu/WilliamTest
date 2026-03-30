@@ -176,17 +176,7 @@ WilliamTest/
 12. Add parent-child chunking - 添加父子切块功能
 13. Add hybrid retrieval and rerank - 添加混合检索和 Rerank
 14. Update prompts for better summarization - 优化提示词增强总结功能
-
-## 后续扩展方向
-
-可选的优化方向：
-1. BM25 关键词检索与语义检索融合
-2. 引入外部 Reranker 模型（如 CrossEncoder）
-3. 多轮对话支持
-4. 财务表格结构化提取
-5. 多年份对比分析
-6. 流式输出支持
-7. 用户反馈系统
+15. Add streaming output and feedback system - 添加流式输出和用户反馈系统
 
 ## 许可证
 
