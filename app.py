@@ -9,6 +9,89 @@ st.markdown("""
 基于 Apple 2020-2025 年 10-K 报告的智能金融问答系统，使用 RAG 技术实现。
 """)
 
+# 侧边栏：模型配置
+with st.sidebar:
+    st.header("⚙️ 模型配置")
+    
+    # 显示当前使用的模型
+    try:
+        info_response = requests.get("http://localhost:8000/api/generator-info")
+        if info_response.status_code == 200:
+            generator_info = info_response.json()
+            st.success(f"✅ 当前使用: {generator_info['name']}")
+            st.info(generator_info['description'])
+            
+            if generator_info['type'] == 'api':
+                st.caption(f"API URL: {generator_info.get('api_url', '')}")
+                st.caption(f"模型名称: {generator_info.get('model_name', '')}")
+    except:
+        st.warning("⚠️ 无法连接到后端服务")
+    
+    st.divider()
+    
+    st.subheader("配置 API 大模型")
+    st.caption("如果需要使用大模型，请填写以下信息：")
+    
+    api_url = st.text_input(
+        "API URL",
+        placeholder="例如: https://api.openai.com/v1"
+    )
+    
+    api_key = st.text_input(
+        "API Key",
+        type="password",
+        placeholder="输入您的 API Key"
+    )
+    
+    model_name = st.text_input(
+        "模型名称",
+        value="gpt-3.5-turbo",
+        placeholder="例如: gpt-3.5-turbo, gpt-4"
+    )
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        if st.button("使用 API 大模型", type="primary"):
+            if api_url and api_key:
+                try:
+                    config_response = requests.post(
+                        "http://localhost:8000/api/configure-llm",
+                        json={
+                            "api_url": api_url,
+                            "api_key": api_key,
+                            "model_name": model_name
+                        }
+                    )
+                    if config_response.status_code == 200:
+                        st.success("✅ 配置成功！")
+                        st.rerun()
+                    else:
+                        st.error("配置失败")
+                except Exception as e:
+                    st.error(f"配置错误: {str(e)}")
+            else:
+                st.warning("请填写 API URL 和 API Key")
+    
+    with col2:
+        if st.button("使用本地小模型"):
+            try:
+                config_response = requests.post(
+                    "http://localhost:8000/api/configure-llm",
+                    json={"api_url": None, "api_key": None}
+                )
+                if config_response.status_code == 200:
+                    st.success("✅ 已切换到本地小模型")
+                    st.rerun()
+                else:
+                    st.error("切换失败")
+            except Exception as e:
+                st.error(f"切换错误: {str(e)}")
+    
+    st.divider()
+    st.info("💡 提示：不填写 API 配置时，系统将使用本地 TinyLlama 小模型进行总结。")
+
+# 主界面：问答功能
 question = st.text_input(
     "请输入您的问题：",
     placeholder="例如：Apple 2025 年的营收是多少？"

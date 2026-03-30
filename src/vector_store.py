@@ -16,7 +16,7 @@ class VectorStore:
         except:
             self.collection = self.client.create_collection(
                 name=name,
-                metadata={"hnsw:space": "cosine", "hnsw:M": 16, "hnsw:ef_construction": 100}
+                metadata={"hnsw:space": "cosine", "hnsw:M": 16}
             )
 
     def add_documents(self, chunks: List[DocumentChunk]):

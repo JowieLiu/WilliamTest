@@ -17,7 +17,7 @@ def initialize_system():
     
     data_path = "data/aapl_10k.json"
     embedding_model_name = os.getenv("EMBEDDING_MODEL_NAME", "all-MiniLM-L6-v2")
-    model_type = os.getenv("GENERATION_MODEL_TYPE", "fallback")
+    model_type = os.getenv("GENERATION_MODEL_TYPE", "tinyllama")
     chroma_db_path = os.getenv("CHROMA_DB_PATH", "./chroma_db")
     
     print(f"Loading data from {data_path}...")
