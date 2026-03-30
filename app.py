@@ -28,10 +28,10 @@ if st.button("获取回答"):
                 if response.status_code == 200:
                     result = response.json()
                     
-                    st.subheader("📋 检索到的财报信息：")
-                    st.markdown(result["answer"])
+                    st.subheader("💡 回答：")
+                    st.write(result["answer"])
                     
-                    st.subheader("📚 详细来源：")
+                    st.subheader("📚 参考来源：")
                     for i, source in enumerate(result["sources"], 1):
                         with st.expander(f"来源 {i} - {source['metadata'].get('year', 'N/A')} 年 {source['metadata'].get('section_title', 'N/A')}"):
                             st.write(source["text"])
