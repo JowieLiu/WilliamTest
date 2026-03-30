@@ -57,13 +57,99 @@ streamlit run app.py
 ```
 
 5. **访问应用**
-- 前端界面：http://localhost:8501
+- 前端界面：http://localhost:8502
 - API 文档：http://localhost:8000/docs
 
 ### 方式二：Docker 运行
 
+#### 前置准备
+确保已安装 Docker 和 Docker Compose：
 ```bash
+# 检查 Docker 版本
+docker --version
+
+# 检查 Docker Compose 版本
+docker-compose --version
+```
+
+#### 首次运行（完整构建）
+```bash
+# 构建并启动服务
+docker-compose up --build
+
+# 或者后台运行
+docker-compose up -d --build
+```
+
+#### 日常运行（使用缓存）
+```bash
+# 启动服务（使用已构建的镜像）
 docker-compose up
+
+# 后台运行
+docker-compose up -d
+
+# 查看日志
+docker-compose logs -f
+
+# 停止服务
+docker-compose down
+
+# 停止服务并删除数据卷（谨慎使用）
+docker-compose down -v
+```
+
+#### 访问应用
+- **前端界面**: http://localhost:8502
+- **后端 API**: http://localhost:8000
+- **API 文档**: http://localhost:8000/docs
+
+#### 注意事项
+1. **首次启动时间较长**:
+   - 下载 Docker 镜像（python:3.10-slim）
+   - 安装 Python 依赖
+   - 加载和处理财报数据
+   - 初始化向量数据库
+   - 下载模型（TinyLlama，约 2GB）
+   
+   预计首次启动需要 5-15 分钟，具体取决于网络速度。
+
+2. **数据持久化**:
+   - 向量数据库存储在 `./chroma_db` 目录
+   - 该目录通过 volume 挂载到容器
+   - 重启容器不会丢失数据
+
+3. **网络要求**:
+   - 需要外网访问以下服务：
+     - Docker Hub（拉取基础镜像）
+     - PyPI（安装 Python 依赖）
+     - HuggingFace（下载模型）
+
+4. **资源要求**:
+   - 内存：建议 4GB+
+   - 磁盘：建议 10GB+ 可用空间
+   - CPU：建议 2 核+
+
+5. **环境变量配置**（可选）:
+   可以在 `docker-compose.yml` 中修改环境变量：
+   - `EMBEDDING_MODEL_NAME`: 嵌入模型名称
+   - `GENERATION_MODEL_TYPE`: 生成模型类型（fallback/tinyllama）
+   - `GENERATION_MODEL_NAME`: 生成模型名称
+   - `CHROMA_DB_PATH`: 向量数据库路径
+
+#### 故障排查
+```bash
+# 查看容器状态
+docker-compose ps
+
+# 查看特定服务日志
+docker-compose logs app
+
+# 进入容器调试
+docker-compose exec app bash
+
+# 重新构建镜像（不使用缓存）
+docker-compose build --no-cache
 ```
 
 ### 运行测试
