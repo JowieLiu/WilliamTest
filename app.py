@@ -1,5 +1,6 @@
 import streamlit as st
 import requests
+import json
 
 st.set_page_config(page_title="AAPL 10-K 财报问答系统", page_icon="📊")
 
@@ -99,38 +100,177 @@ question = st.text_input(
 
 top_k = st.slider("检索相关文档数量", min_value=1, max_value=5, value=3)
 
+# 流式输出选项
+use_streaming = st.checkbox("启用流式输出", value=False)
+
+# 初始化 session state
+if 'current_answer' not in st.session_state:
+    st.session_state.current_answer = ""
+if 'current_sources' not in st.session_state:
+    st.session_state.current_sources = []
+if 'feedback_submitted' not in st.session_state:
+    st.session_state.feedback_submitted = False
+
 if st.button("获取回答"):
     if question:
-        with st.spinner("正在思考..."):
+        st.session_state.current_answer = ""
+        st.session_state.current_sources = []
+        st.session_state.feedback_submitted = False
+        
+        if use_streaming:
+            # 流式输出模式
+            status_placeholder = st.empty()
+            answer_placeholder = st.empty()
+            sources_placeholder = st.empty()
+            
             try:
+                status_placeholder.info("🔍 正在查找相关文档...")
+                
                 response = requests.post(
-                    "http://localhost:8000/api/qa",
-                    json={"question": question, "top_k": top_k}
+                    "http://localhost:8000/api/qa/stream",
+                    json={"question": question, "top_k": top_k},
+                    stream=True
                 )
                 
-                if response.status_code == 200:
-                    result = response.json()
-                    
-                    st.subheader("💡 回答：")
-                    st.write(result["answer"])
-                    
+                current_answer = ""
+                sources = []
+                answer_started = False
+                
+                for line in response.iter_lines():
+                    if line:
+                        line = line.decode('utf-8')
+                        if line.startswith('data: '):
+                            data_str = line[6:]
+                            try:
+                                data = json.loads(data_str)
+                                
+                                # 处理状态信息
+                                if 'status' in data:
+                                    if data['status'] == 'searching':
+                                        status_placeholder.info("🔍 正在查找相关文档...")
+                                    elif data['status'] == 'generating':
+                                        status_placeholder.info("✨ 正在生成答案...")
+                                
+                                # 处理来源信息
+                                if 'sources' in data:
+                                    sources = data['sources']
+                                    st.session_state.current_sources = sources
+                                
+                                # 处理答案
+                                if 'answer' in data:
+                                    if not answer_started:
+                                        answer_started = True
+                                        status_placeholder.empty()
+                                    
+                                    current_answer = data['answer']
+                                    st.session_state.current_answer = current_answer
+                                    answer_placeholder.subheader("💡 回答：")
+                                    answer_placeholder.write(current_answer)
+                                
+                                # 处理完成
+                                if 'done' in data and data['done']:
+                                    status_placeholder.empty()
+                                    break
+                                
+                                # 处理错误
+                                if 'error' in data:
+                                    status_placeholder.error(f"错误: {data['error']}")
+                                    break
+                            except json.JSONDecodeError:
+                                continue
+                
+                # 显示参考来源
+                if sources:
                     st.subheader("📚 参考来源：")
-                    for i, source in enumerate(result["sources"], 1):
-                        with st.expander(f"来源 {i} - {source['metadata'].get('year', 'N/A')} 年 {source['metadata'].get('section_title', 'N/A')}"):
+                    for i, source in enumerate(sources, 1):
+                        chunk_type = "父块（章节摘要）" if source['metadata'].get('is_parent', False) else "子块（详细内容）"
+                        with st.expander(f"来源 {i} - {chunk_type} - {source['metadata'].get('year', 'N/A')} 年 {source['metadata'].get('section_title', 'N/A')}"):
                             st.write(source["text"])
                             if source.get('distance'):
                                 st.caption(f"相似度距离: {source['distance']:.4f}")
-                else:
-                    st.error(f"错误: {response.status_code}")
-                    st.write(response.text)
-                    
+            
             except requests.exceptions.ConnectionError:
-                st.error("无法连接到后端服务，请确保后端服务正在运行！")
+                status_placeholder.error("无法连接到后端服务，请确保后端服务正在运行！")
                 st.info("请先运行 `python main.py` 启动后端服务")
             except Exception as e:
-                st.error(f"发生错误: {str(e)}")
+                status_placeholder.error(f"发生错误: {str(e)}")
+        else:
+            # 普通模式
+            with st.spinner("正在思考..."):
+                try:
+                    response = requests.post(
+                        "http://localhost:8000/api/qa",
+                        json={"question": question, "top_k": top_k}
+                    )
+                    
+                    if response.status_code == 200:
+                        result = response.json()
+                        st.session_state.current_answer = result["answer"]
+                        st.session_state.current_sources = result["sources"]
+                        
+                        st.subheader("💡 回答：")
+                        st.write(result["answer"])
+                        
+                        st.subheader("📚 参考来源：")
+                        for i, source in enumerate(result["sources"], 1):
+                            chunk_type = "父块（章节摘要）" if source['metadata'].get('is_parent', False) else "子块（详细内容）"
+                            with st.expander(f"来源 {i} - {chunk_type} - {source['metadata'].get('year', 'N/A')} 年 {source['metadata'].get('section_title', 'N/A')}"):
+                                st.write(source["text"])
+                                if source.get('distance'):
+                                    st.caption(f"相似度距离: {source['distance']:.4f}")
+                    else:
+                        st.error(f"错误: {response.status_code}")
+                        st.write(response.text)
+                        
+                except requests.exceptions.ConnectionError:
+                    st.error("无法连接到后端服务，请确保后端服务正在运行！")
+                    st.info("请先运行 `python main.py` 启动后端服务")
+                except Exception as e:
+                    st.error(f"发生错误: {str(e)}")
     else:
         st.warning("请输入问题！")
+
+# 显示用户反馈界面（如果有回答）
+if st.session_state.current_answer and not st.session_state.feedback_submitted:
+    st.divider()
+    st.subheader("📝 您的反馈")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        helpful = st.radio(
+            "这个回答对您有帮助吗？",
+            ("👍 有帮助", "👎 没帮助"),
+            index=None
+        )
+    
+    comment = st.text_area(
+        "其他意见或建议（可选）：",
+        placeholder="请输入您的反馈..."
+    )
+    
+    if st.button("提交反馈", type="primary"):
+        if helpful is not None:
+            try:
+                feedback_response = requests.post(
+                    "http://localhost:8000/api/feedback",
+                    json={
+                        "question": question,
+                        "answer": st.session_state.current_answer,
+                        "helpful": helpful == "👍 有帮助",
+                        "comment": comment if comment else None
+                    }
+                )
+                if feedback_response.status_code == 200:
+                    st.success("✅ 感谢您的反馈！")
+                    st.session_state.feedback_submitted = True
+                    st.rerun()
+                else:
+                    st.error("提交反馈失败")
+            except Exception as e:
+                st.error(f"提交反馈错误: {str(e)}")
+        else:
+            st.warning("请选择是否有帮助")
 
 st.markdown("---")
 st.markdown("### 示例问题：")
