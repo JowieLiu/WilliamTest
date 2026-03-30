@@ -5,10 +5,11 @@ services:
     build: .
     ports:
       - "8000:8000"
-      - "8501:8501"
+      - "8502:8502"
     volumes:
       - ./chroma_db:/app/chroma_db
     environment:
       - EMBEDDING_MODEL_NAME=all-MiniLM-L6-v2
+      - GENERATION_MODEL_TYPE=fallback
       - GENERATION_MODEL_NAME=TinyLlama/TinyLlama-1.1B-Chat-v1.0
       - CHROMA_DB_PATH=./chroma_db
