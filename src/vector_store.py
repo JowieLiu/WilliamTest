@@ -20,6 +20,10 @@ class VectorStore:
         if not self.collection:
             self.create_collection()
 
+        if self.collection.count() > 0:
+            print("Collection already contains documents, skipping addition")
+            return
+
         ids = [chunk.id for chunk in chunks]
         texts = [chunk.text for chunk in chunks]
         metadatas = [chunk.metadata for chunk in chunks]

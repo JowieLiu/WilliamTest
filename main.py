@@ -1,5 +1,7 @@
-import uvicorn
 import os
+os.environ["CHROMA_TELEMETRY"] = "0"
+
+import uvicorn
 from dotenv import load_dotenv
 from src.data_processor import DataProcessor
 from src.vector_store import VectorStore
