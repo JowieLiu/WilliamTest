@@ -6,7 +6,6 @@ from dotenv import load_dotenv
 from src.data_processor import DataProcessor
 from src.vector_store import VectorStore
 from src.retriever import Retriever
-from src.qa_generator import QAGenerator
 from src.api import app, initialize_components
 
 load_dotenv()
@@ -17,7 +16,6 @@ def initialize_system():
     
     data_path = "data/aapl_10k.json"
     embedding_model_name = os.getenv("EMBEDDING_MODEL_NAME", "all-MiniLM-L6-v2")
-    generation_model_name = os.getenv("GENERATION_MODEL_NAME", "TinyLlama/TinyLlama-1.1B-Chat-v1.0")
     chroma_db_path = os.getenv("CHROMA_DB_PATH", "./chroma_db")
     
     print(f"Loading data from {data_path}...")
@@ -36,14 +34,11 @@ def initialize_system():
     print("Initializing retriever...")
     retriever = Retriever(vector_store)
     
-    print(f"Loading QA generator model {generation_model_name}...")
-    qa_generator = QAGenerator(generation_model_name)
-    
     print("Initializing API components...")
-    initialize_components(vector_store, retriever, qa_generator)
+    initialize_components(vector_store, retriever)
     
     print("System initialization complete!")
-    return vector_store, retriever, qa_generator
+    return vector_store, retriever
 
 
 if __name__ == "__main__":
