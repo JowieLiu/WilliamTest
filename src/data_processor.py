@@ -1,6 +1,6 @@
 import json
 import re
-from typing import List, Dict
+from typing import List, Dict, Optional
 from dataclasses import dataclass
 
 
@@ -11,6 +11,8 @@ class DocumentChunk:
     metadata: Dict
     year: int
     section_title: str
+    parent_id: Optional[str] = None
+    chunk_type: str = "child"
 
 
 class DataProcessor:
@@ -53,19 +55,44 @@ class DataProcessor:
                 continue
 
             cleaned_text = self.clean_text(section_text)
+            
+            # 创建父块（整个章节的摘要）
+            parent_chunk = DocumentChunk(
+                id=f"parent_{chunk_id}",
+                text=f"Section: {section_title}\n\n{cleaned_text[:1000]}",
+                metadata={
+                    'year': year,
+                    'section_title': section_title,
+                    'section_id': item.get('section_id', 0),
+                    'is_parent': True
+                },
+                year=year,
+                section_title=section_title,
+                parent_id=None,
+                chunk_type="parent"
+            )
+            chunks.append(parent_chunk)
+            parent_id = f"parent_{chunk_id}"
+            chunk_id += 1
+            
+            # 创建子块（详细内容切块）
             text_chunks = self.split_into_chunks(cleaned_text)
-
+            
             for i, text_chunk in enumerate(text_chunks):
                 chunk = DocumentChunk(
-                    id=f"chunk_{chunk_id}",
+                    id=f"child_{chunk_id}",
                     text=text_chunk,
                     metadata={
                         'year': year,
                         'section_title': section_title,
-                        'section_id': item.get('section_id', 0)
+                        'section_id': item.get('section_id', 0),
+                        'is_parent': False,
+                        'parent_id': parent_id
                     },
                     year=year,
-                    section_title=section_title
+                    section_title=section_title,
+                    parent_id=parent_id,
+                    chunk_type="child"
                 )
                 chunks.append(chunk)
                 chunk_id += 1
